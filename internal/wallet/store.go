@@ -12,9 +12,9 @@ import (
 )
 
 type Store struct {
-	mu       sync.RWMutex
-	dir      string
-	wallets  []models.Wallet
+	mu      sync.RWMutex
+	dir     string
+	wallets []models.Wallet
 }
 
 func NewStore() (*Store, error) {

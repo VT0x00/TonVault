@@ -6,8 +6,8 @@ import (
 	"github.com/VT0x00/tonvault/internal/models"
 	"github.com/VT0x00/tonvault/internal/ton"
 	"github.com/VT0x00/tonvault/internal/wallet"
-	"github.com/xssnick/tonutils-go/address"
 	"github.com/spf13/cobra"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 var balanceShowCmd = &cobra.Command{

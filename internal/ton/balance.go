@@ -11,7 +11,7 @@ import (
 )
 
 type BalanceInfo struct {
-	TON   *big.Int
+	TON *big.Int
 }
 
 func (c *Client) GetBalance(ctx context.Context, addr *address.Address) (*BalanceInfo, error) {

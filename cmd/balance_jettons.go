@@ -9,8 +9,8 @@ import (
 	"github.com/VT0x00/tonvault/internal/wallet"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/tw"
-	"github.com/xssnick/tonutils-go/address"
 	"github.com/spf13/cobra"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 var balanceJettonsCmd = &cobra.Command{

@@ -6,14 +6,14 @@ import (
 
 	"github.com/VT0x00/tonvault/internal/ton"
 	"github.com/VT0x00/tonvault/internal/wallet"
+	"github.com/spf13/cobra"
 	"github.com/xssnick/tonutils-go/address"
 	tonwallet "github.com/xssnick/tonutils-go/ton/wallet"
-	"github.com/spf13/cobra"
 )
 
 var (
-	sendAmount string
-	sendComment string
+	sendAmount   string
+	sendComment  string
 	sendNoBounce bool
 )
 

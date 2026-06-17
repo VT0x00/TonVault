@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	cfg            *config.Manager
-	cfgFile        string
+	cfg     *config.Manager
+	cfgFile string
 )
 
 var rootCmd = &cobra.Command{
