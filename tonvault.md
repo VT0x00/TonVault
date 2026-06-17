@@ -1,278 +1,338 @@
-# Техническое задание: TON CLI Кошелек на Go
+# Technical Specification: TonVault CLI Wallet
 
-## Название проекта
-**TonWalletCLI** — кроссплатформенное консольное приложение для управления кошельками в сети TON.
+## 1. Project Overview
 
-## 1. Цель и область применения
-Разработать CLI-приложение, позволяющее пользователю:
-- создавать и импортировать несколько кошельков TON (HD-кошелек на основе мнемонической фразы);
-- получать и отправлять монеты (Toncoin, а также Jetton-токены);
-- просматривать баланс (основной и токенов) по каждому кошельку;
-- просматривать историю транзакций с фильтрацией и деталями;
-- управлять кошельками (список, активный кошелек, удаление, экспорт ключей);
-- безопасно хранить зашифрованные данные.
+**Project Name:** TonVault
 
-Приложение должно работать в операционных системах Windows, Linux, macOS без графического интерфейса (только терминал).
+**Type:** Command-Line Interface (CLI) application for The Open Network (TON) blockchain
 
-## 2. Функциональные требования
+**Language:** Go (Golang)
 
-### 2.1 Управление кошельками
-- Создание нового кошельта:
-  - генерация 24-словной мнемонической фразы по стандарту BIP39;
-  - поддержка seed-фразы для восстановления (импорт);
-  - создание кошелька по открытому ключу (watch-only) без возможности отправки.
-- Список кошельков:
-  - каждый кошелек имеет пользовательское имя, адрес, дату создания;
-  - возможность установить метку (label) и отметить избранный.
-- Активный кошелек – кошелек, который используется по умолчанию для команд `balance`, `send`, `history`.
-- Переключение между кошельками.
-- Экспорт мнемонической фразы (с запросом пароля) и приватного ключа.
-- Удаление кошелька (с подтверждением).
+**Objective:** Develop a feature-rich CLI wallet for the TON blockchain that provides functionality comparable to major mobile wallets like Tonkeeper, including TON and Jetton transfers, transaction history, balance checking, and wallet management, all accessible from the terminal.
 
-### 2.2 Базовые операции с TON
-- Запрос баланса:
-  - отображение доступного и заблокированного (ожидание) баланса в TON;
-  - отображение балансов всех Jetton-токенов на адресе.
-- Отправка Toncoin:
-  - указание адреса получателя (raw или дружественный формат);
-  - указание суммы в TON (с дробной частью до 9 знаков);
-  - комиссия (вычисляется автоматически или задается пользователем);
-  - подтверждение транзакции перед отправкой с отображением комиссии.
-- Отправка Jetton-токенов (по аналогии с Toncoin).
-- Поддержка комментариев/сообщений в транзакциях (text comment).
-- Получение монет: отображение QR-кода в консоли (ASCII или ссылка на генерацию) для удобного получения.
+---
 
-### 2.3 История транзакций
-- Вывод списка последних N транзакций (по умолчанию 20) для выбранного кошелька.
-- Фильтры:
-  - по типу (входящие/исходящие);
-  - по временному диапазону;
-  - по Jetton-токену (если токен – показать только операции с ним).
-- Детали транзакции:
-  - хэш, блок, время, статус (confirmed / pending);
-  - отправитель, получатель, сумма (с указанием токена);
-  - комиссия, комментарий.
-- Экспорт истории в JSON / CSV.
+## 2. Core Features
 
-### 2.4 Работа с сетью
-- Выбор lite-сервера (из списка публичных или свой) – конфигурируемый.
-- Поддержка testnet и mainnet (переключение через флаг или конфиг).
-- Адаптивная подстройка под время подтверждения транзакций.
+### 2.1 Wallet Management
 
-### 2.5 Безопасность
-- Все приватные данные (seed-фразы, приватные ключи, пароли от кошельков) хранятся в зашифрованном виде.
-- Для шифрования используется PBKDF2 + AES-256-GCM.
-- Основной мастер-пароль (или ключ) для доступа к хранилищу – запрашивается при первом запуске и при каждой операции, требующей разблокировки (можно с таймаутом блокировки).
-- Возможность смены мастер-пароля.
-- Никакие секреты не логируются и не пишутся в открытый вид на диск.
+| Feature | Description |
+|---------|-------------|
+| **Create Wallet** | Generate a new wallet with a 24-word BIP39 mnemonic seed phrase |
+| **Import Wallet** | Restore an existing wallet from a seed phrase or private key |
+| **List Wallets** | Display all locally stored wallets with their addresses and aliases |
+| **Delete Wallet** | Remove a wallet from local storage |
+| **Export Wallet** | Export wallet private key or seed phrase (with confirmation) |
+| **Wallet Info** | Display detailed information about a specific wallet (address, balance, version, etc.) |
 
-### 2.6 Конфигурация и настройки
-- Конфигурационный файл (JSON/TOML) в стандартном каталоге пользователя:
-  - активный кошелек;
-  - сеть (mainnet/testnet);
-  - адрес lite-сервера;
-  - настройки отображения (количество записей в истории);
-  - таймаут блокировки сессии (0 – не блокировать).
-- Возможность переопределения параметров через флаги командной строки.
+### 2.2 Balance & Account Information
 
-### 2.7 Дополнительные возможности (по желанию, но желательно)
-- Стейкинг (запрос APY, делегирование) – упрощенная версия.
-- Проверка подлинности контракта кошелька (V3, V4, Wallet Highload).
-- Экспорт/импорт кошельков через зашифрованный файл.
+| Feature | Description |
+|---------|-------------|
+| **View Balance** | Display TON balance in both nanoTON and TON units |
+| **View Jetton Balances** | List all Jetton tokens held by the wallet with their balances |
+| **Account Details** | Show wallet address, public key, wallet version, and deployment status |
+| **Multi-wallet Support** | Manage and switch between multiple wallets |
 
-## 3. Нефункциональные требования
+### 2.3 TON Transfers
 
-### 3.1 Кроссплатформенность
-- Сборка под `windows/amd64`, `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`.
-- Использование стандартной библиотеки Go и кроссплатформенных зависимостей (без CGO, если возможно).
-- Файлы конфигурации и хранилища размещаются в:
-  - Windows: `%APPDATA%\TonWalletCLI\`
-  - Linux/macOS: `~/.config/tonwalletcli/`
+| Feature | Description |
+|---------|-------------|
+| **Send TON** | Transfer TON coins to any TON address |
+| **Add Comment** | Attach an optional text comment (memo) to the transaction |
+| **Specify Amount** | Support for both TON and nanoTON units |
+| **Bounce Option** | Specify whether the transaction should bounce if the recipient contract doesn't exist |
+| **Transaction Confirmation** | Display transaction hash and link to blockchain explorer after sending |
+| **Gas Estimation** | Estimate and display gas fees before confirming the transaction |
 
-### 3.2 Производительность
-- Время запуска CLI не более 0.5 секунд.
-- Запрос баланса и истории – не более 2 секунд (при нормальном соединении).
+### 2.4 Jetton Transfers
 
-### 3.3 Надежность и безопасность
-- Обработка ошибок сети – повторные попытки с экспоненциальной задержкой.
-- Валидация адресов TON перед отправкой.
-- Защита от случайной отправки на неверный адрес (проверка контрольной суммы).
-- Сессия блокируется после таймаута (по умолчанию 5 минут неактивности), требуется повторный ввод мастер-пароля.
+| Feature | Description |
+|---------|-------------|
+| **Send Jettons** | Transfer Jetton tokens (e.g., USDT, NOT, etc.) to any TON address |
+| **Add Comment** | Attach an optional text comment (memo) to Jetton transfers |
+| **Jetton Selection** | Interactive selection of which Jetton to send from available balances |
+| **Gas Estimation** | Estimate and display gas fees (paid in TON) before confirming |
+| **Transaction Confirmation** | Display transaction hash and link to blockchain explorer |
 
-### 3.4 Юзабилити
-- Интерактивный режим: команды с подсказками.
-- Автодополнение (если возможно, через `go-prompt` или стандартный `readline`).
-- Цветной вывод (опционально, отключается флагом `--no-color`).
-- Понятные сообщения об ошибках.
+### 2.5 Transaction History
 
-## 4. Архитектура и стек
+| Feature | Description |
+|---------|-------------|
+| **List Transactions** | Display recent transaction history with pagination |
+| **Transaction Details** | Show detailed information for a specific transaction (hash, amount, sender, recipient, timestamp, status, comment) |
+| **Filter Transactions** | Filter by type (incoming/outgoing), asset (TON/Jetton), or date range |
+| **Explorer Link** | Generate and display a link to view the transaction on TON blockchain explorers |
 
-### 4.1 Используемые библиотеки
-- `tonutils-go` (или `github.com/tonkeeper/tongo`) – работа с TON blockchain (адреса, ABI, запросы).
-- `go-ethereum/crypto` / `bip39` для мнемоники и BIP32.
-- `github.com/spf13/cobra` – CLI фреймворк.
-- `github.com/spf13/viper` – конфигурация.
-- `github.com/tendermint/tm-db` или простой `sqlite` для хранения истории (с шифрованием).
-- `crypto/aes`, `crypto/sha256` – шифрование.
+### 2.6 Additional Features
 
-### 4.2 Структура модулей
+| Feature | Description |
+|---------|-------------|
+| **Network Selection** | Switch between Mainnet and Testnet |
+| **Address Validation** | Validate TON addresses before sending |
+| **QR Code Generation** | Generate QR code for wallet address (optional) |
+| **Configuration Management** | Persistent configuration storage (network, default wallet, etc.) |
+
+---
+
+## 3. Non-Functional Requirements
+
+### 3.1 Performance
+- Transaction signing and submission should complete within 5 seconds under normal network conditions
+- Balance checks should complete within 2 seconds
+- Support for concurrent operations using Go's goroutines
+
+### 3.2 Security
+- Seed phrases and private keys MUST be stored encrypted
+- Encryption using AES-256-GCM or similar industry-standard algorithms
+- No plaintext storage of sensitive data
+- Interactive confirmation for all transaction submissions
+- Support for passphrase-protected wallets
+
+### 3.3 Usability
+- Intuitive command structure with subcommands (e.g., `tonvault wallet create`, `tonvault send ton`)
+- Interactive mode for guided transactions
+- Help commands and usage examples for all commands
+- Color-coded output for better readability
+- Progress indicators for long-running operations
+
+### 3.4 Reliability
+- Automatic retry with exponential backoff for failed requests
+- Connection pooling and automatic failover between multiple lite servers
+- Graceful handling of network errors
+- Transaction status verification after submission
+
+### 3.5 Maintainability
+- Clean, modular architecture following Go best practices
+- Comprehensive unit and integration tests
+- Well-documented code and API
+- Structured logging with configurable log levels
+
+---
+
+## 4. Technology Stack
+
+### 4.1 Core Libraries
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Blockchain Interaction** | `tonutils-go` (github.com/xssnick/tonutils-go) | Primary Go library for TON blockchain interaction with native ADNL and lite protocol support |
+| **Alternative** | `tongo` (github.com/tonkeeper/tongo) | Alternative Go library with comprehensive TON primitives |
+| **High-level API** | `tonapi-go` (github.com/tonkeeper/tonapi-go) | Optional high-level API for simplified Jetton and NFT operations |
+
+### 4.2 Wallet & Cryptography
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Mnemonic Generation** | BIP39 standard | Generate and validate 24-word seed phrases |
+| **Key Derivation** | Ed25519 | TON uses Ed25519 for wallet key derivation |
+| **Encryption** | AES-256-GCM | Encrypt sensitive data (seed phrases, private keys) |
+
+### 4.3 CLI Framework
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **CLI Framework** | `cobra` (github.com/spf13/cobra) | Industry-standard CLI framework for Go |
+| **Configuration** | `viper` (github.com/spf13/viper) | Configuration management with support for multiple formats |
+| **Output Formatting** | `tablewriter` (github.com/olekukonko/tablewriter) | Formatted table output for transaction lists and balances |
+| **Color Output** | `color` (github.com/fatih/color) | Colored terminal output for better UX |
+
+### 4.4 Data Storage
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Local Storage** | Encrypted JSON files | Store wallet data, configuration, and transaction cache |
+| **Database (Optional)** | SQLite (with GORM) | Optional relational storage for transaction history |
+
+### 4.5 TON-Specific Components
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Wallet Versions** | V3, V4, V5R1, Highload V3 | Support for different TON wallet contract versions |
+| **Jetton Standard** | TEP-74 | Implement Jetton transfers according to TEP-74 standard |
+| **Transaction Comment** | Text comment field | Support for optional transaction comments/memos |
+| **Network Config** | Global config files | Mainnet: `https://ton-blockchain.github.io/global.config.json` |
+
+### 4.6 Development Tools
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Build Tool** | Go modules | Dependency management and builds |
+| **Testing** | Go standard testing + testify | Unit and integration testing |
+| **Linting** | golangci-lint | Code quality and style enforcement |
+| **CI/CD** | GitHub Actions | Automated testing and releases |
+
+---
+
+## 5. CLI Command Structure
+
 ```
-cmd/               # cobra команды
-internal/
-  wallet/          # управление кошельками (создание, импорт, хранение)
-  ton/             # взаимодействие с blockchain (запросы, отправка)
-  db/              # хранение и шифрование данных
-  history/         # сохранение локальной истории (кеш)
-  config/          # конфигурация
-  ui/              # вспомогательные функции вывода, форматирование
-pkg/
-  encrypt/         # шифрование/дешифрование
-  tonutil/         # утилиты для адресов, парсинга
-```
-
-### 4.3 Data storage
-- Данные кошельков: зашифрованный JSON-файл `wallets.dat` (содержит имя, зашифрованный seed, адрес, метаданные).
-- История транзакций: SQLite (зашифрованный или plain с правами доступа) для быстрого поиска и кеширования.
-
-## 5. План разработки (Self-Driven Development)
-
-Разработка ведется спринтами по 2-3 дня. Каждый спринт завершается рабочей командой.
-
-### Спринт 0: Настройка инфраструктуры
-- Инициализация Go модуля.
-- Выбор и интеграция TON-библиотеки (проверка работы на testnet).
-- Сборка базового CLI с `cobra` (заглушки команд).
-
-### Спринт 1: Управление кошельками и безопасное хранение
-- Генерация мнемоники по BIP39.
-- Получение адреса TON (V4R2).
-- Шифрование и сохранение кошельков.
-- Команды: `wallet create`, `wallet import`, `wallet list`, `wallet delete`.
-
-### Спринт 2: Баланс и работа с сетью
-- Подключение к lite-серверам mainnet/testnet.
-- Запрос баланса (TON + Jetton).
-- Команда `balance` для активного кошелька и `balance --wallet <id>`.
-
-### Спринт 3: Отправка и получение монет
-- Формирование и подпись транзакции.
-- Отправка Toncoin с комментарием.
-- Команды: `send --to <addr> --amount <ton>`, `send --help`.
-- Вывод QR-кода адреса для получения (команда `receive`).
-
-### Спринт 4: История транзакций
-- Получение истории через библиотеку (lite-server API).
-- Локальное кэширование.
-- Команда `history` с фильтрами, экспорт.
-
-### Спринт 5: Улучшения безопасности и UX
-- Мастер-пароль, сессия с таймаутом.
-- Подтверждение опасных операций.
-- Цветной вывод, автокомплит.
-
-### Спринт 6: Тестирование и кросс-сборка
-- Написание unit-тестов для шифрования и адресов.
-- Интеграционные тесты на testnet.
-- CI/CD для сборки под все платформы (GitHub Actions).
-
-### Спринт 7: Документация и финальная полировка
-- README с примерами использования.
-- Документация по командам (man-страница).
-- Примеры скриптов автоматизации.
-
-## 6. Спецификация команд CLI
-
-Основная команда: `tonwallet [command] [flags]`
-
-Глобальные флаги:
-- `--config` – путь к конфигу (по умолчанию стандартный каталог)
-- `--network` – mainnet или testnet
-- `--no-color` – отключить цвет
-- `--json` – вывод в JSON (для автоматизации)
-
-Команды:
-```
-wallet
-  create [name]          -- создать новый кошелек, напечатать мнемонику
-  import [name]          -- импортировать кошелек из мнемоники (интерактивно)
-  list                   -- показать все кошельки (активный помечен *)
-  use <name>             -- сделать кошелек активным
-  export <name>          -- экспортировать мнемонику (требует мастер-пароль)
-  delete <name>          -- удалить кошелек
-  rename <old> <new>     -- переименовать
-
-balance                  -- баланс активного кошелька
-balance <name>           -- баланс указанного
-balance --jetton <addr>  -- баланс конкретного Jetton
-
-send
-  --to <addr>            -- адрес получателя
-  --amount <TON>         -- количество TON (например 0.5)
-  --comment <text>       -- комментарий (опционально)
-  --wallet <name>        -- кошелек отправителя (иначе активный)
-  --yes                  -- автоматическое подтверждение
-
-receive                  -- показать адрес активного кошелька и QR (ASCII)
-
-history
-  [--limit 20]           -- количество записей
-  [--incoming] [--outgoing]
-  [--since 2024-01-01] [--until 2024-12-31]
-  [--token <jetton-addr>]
-  [--export json|csv]    -- экспорт в файл
-
-config
-  set <key> <value>      -- изменить настройку
-  get <key>              -- показать значение
-  list                   -- все настройки
-
-session
-  lock                   -- заблокировать сессию (очистить мастер-пароль)
-  unlock                 -- ввести мастер-пароль для разблокировки
+tonvault
+├── wallet
+│   ├── create          # Create a new wallet
+│   ├── import          # Import wallet from seed phrase
+│   ├── list            # List all wallets
+│   ├── info            # Show wallet details
+│   ├── delete          # Delete a wallet
+│   └── export          # Export wallet (private key/seed)
+├── balance
+│   ├── show            # Show TON balance
+│   └── jettons         # Show Jetton balances
+├── send
+│   ├── ton             # Send TON coins
+│   └── jetton          # Send Jettons
+├── history
+│   ├── list            # List transaction history
+│   └── show            # Show transaction details
+├── network
+│   ├── set             # Set network (mainnet/testnet)
+│   └── status          # Show current network status
+└── config
+    ├── set             # Set configuration values
+    ├── get             # Get configuration values
+    └── reset           # Reset to default configuration
 ```
 
-## 7. Примеры использования
+---
 
-```bash
-# Инициализация (первый запуск – создание мастер-пароля)
-$ tonwallet wallet create "Основной"
-Enter master password (min 8 chars): 
-Repeat: 
-Mnemonic (write down securely): abandon ... zoo
+## 6. Data Models
 
-$ tonwallet wallet list
-* Основной (EQD...abc) - balance: 10.5 TON
-
-$ tonwallet send --to EQD...xyz --amount 1.2 --comment "Thanks!"
-⚠️  Sending 1.2 TON + fee ≈ 0.005 TON to EQD...xyz
-Confirm? (y/N): y
-Transaction sent: hash=...
-
-$ tonwallet history --limit 5
-+----+--------+--------+----------+-------------------+-------+
-| #   | Type   | Amount | Comment  | Date              | Hash  |
-+----+--------+--------+----------+-------------------+-------+
-| 1   | OUT    | 1.2 TON| Thanks   | 2025-03-15 14:32  | 0xab..|
-| 2   | IN     | 0.5 TON|          | 2025-03-14 09:12  | 0xcd..|
-+----+--------+--------+----------+-------------------+-------+
-
-$ tonwallet config set network testnet
-Switched to testnet
+### 6.1 Wallet
+```go
+type Wallet struct {
+    ID          string    `json:"id"`
+    Name        string    `json:"name"`
+    Address     string    `json:"address"`
+    PublicKey   string    `json:"public_key"`
+    EncryptedSeed string `json:"encrypted_seed"`
+    Version     string    `json:"version"` // "v3", "v4", "v5r1"
+    SubwalletID uint32    `json:"subwallet_id"`
+    CreatedAt   time.Time `json:"created_at"`
+    IsDefault   bool      `json:"is_default"`
+}
 ```
 
-## 8. Критерии приемки
-- Все функциональные требования реализованы.
-- Приложение стабильно работает на Windows, Linux, macOS (проверено на чистых установках).
-- Мастер-пароль и зашифрованное хранилище – при утере пароля данные не восстанавливаются.
-- Время ответа команд не превышает указанных лимитов.
-- Код покрыт тестами (минимум 60%).
-- Документация содержит примеры для каждой команды.
+### 6.2 Transaction
+```go
+type Transaction struct {
+    Hash        string    `json:"hash"`
+    Type        string    `json:"type"` // "incoming", "outgoing"
+    AssetType   string    `json:"asset_type"` // "ton", "jetton"
+    AssetSymbol string    `json:"asset_symbol"`
+    Amount      string    `json:"amount"` // in nano units
+    From        string    `json:"from"`
+    To          string    `json:"to"`
+    Comment     string    `json:"comment"`
+    Fee         string    `json:"fee"`
+    Status      string    `json:"status"` // "pending", "confirmed", "failed"
+    Timestamp   time.Time `json:"timestamp"`
+    BlockHeight uint64    `json:"block_height"`
+}
+```
 
-## 9. Дальнейшее развитие (не входит в текущую версию)
-- Поддержка аппаратных кошельков (Ledger).
-- Web-интерфейс через локальный сервер.
-- Мультиподпись (multisig).
+### 6.3 Configuration
+```go
+type Config struct {
+    Network         string `json:"network"` // "mainnet", "testnet"
+    DefaultWalletID string `json:"default_wallet_id"`
+    ExplorerURL     string `json:"explorer_url"`
+    LogLevel        string `json:"log_level"`
+    LiteServers     []string `json:"lite_servers"`
+}
+```
 
-## Заключение
-ТЗ составлено для реализации силами одного Go-разработчика в режиме self-driven development. Приоритет – безопасность и простота использования в консоли. Работа начинается со Спринта 0.
+---
 
+## 7. API Integration
+
+### 7.1 Blockchain Connection Methods
+
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| **Lite Client (ADNL)** | Direct connection to TON lite servers | Primary method for all operations |
+| **TON API (HTTP)** | REST API via TonAPI.io or self-hosted | Optional for high-level operations |
+
+### 7.2 Key Operations
+
+1. **Wallet Initialization**: Derive address and public key from seed phrase
+2. **Balance Query**: Get balance using lite client API
+3. **Transaction Building**: Construct external messages for sending TON/Jettons
+4. **Transaction Signing**: Sign messages with wallet private key
+5. **Transaction Broadcasting**: Send signed messages to the network
+6. **Transaction History**: Query transaction history via lite client or TonAPI
+
+---
+
+## 8. Development Phases
+
+### Phase 1: Foundation (Weeks 1-2)
+- Project setup and Go module initialization
+- CLI framework integration (Cobra)
+- Configuration management (Viper)
+- Basic wallet creation and import functionality
+- Connection to TON network (lite client)
+
+### Phase 2: Core Features (Weeks 3-4)
+- Balance checking (TON and Jettons)
+- TON transfer with comments
+- Transaction signing and broadcasting
+- Transaction history retrieval
+
+### Phase 3: Jetton Support (Weeks 5-6)
+- Jetton balance detection
+- Jetton transfer implementation (TEP-74)
+- Jetton-specific error handling
+- Gas estimation for Jetton transfers
+
+### Phase 4: Polish & Testing (Weeks 7-8)
+- Comprehensive test coverage
+- Error handling and edge cases
+- Documentation and usage examples
+- Performance optimization
+- Security audit
+
+---
+
+## 9. Testing Strategy
+
+| Test Type | Description |
+|-----------|-------------|
+| **Unit Tests** | Test individual components (wallet generation, address validation, etc.) |
+| **Integration Tests** | Test against TON testnet for real transactions |
+| **Mock Tests** | Mock blockchain responses for deterministic testing |
+| **Security Tests** | Test encryption, key storage, and sensitive data handling |
+| **CLI Tests** | Test command parsing, flags, and output formatting |
+
+---
+
+## 10. Deliverables
+
+1. **Source Code**: Complete Go source code with modular architecture
+2. **Binary Releases**: Compiled binaries for Linux, macOS, and Windows
+3. **Documentation**:
+   - Installation guide
+   - User manual with command reference
+   - Developer documentation
+4. **Test Suite**: Comprehensive unit and integration tests
+5. **Example Scripts**: Example usage scripts and automation examples
+
+---
+
+## 11. Security Considerations
+
+- **Seed Phrase Storage**: Never store seed phrases in plaintext. Use encryption with a user-provided password.
+- **Memory Safety**: Clear sensitive data from memory after use.
+- **Input Validation**: Validate all user inputs (addresses, amounts, etc.).
+- **Transaction Confirmation**: Always require explicit user confirmation before broadcasting transactions.
+- **Error Messages**: Avoid exposing sensitive information in error messages.
+- **Rate Limiting**: Implement rate limiting for API calls to avoid being blocked.
+
+---
+
+## 12. References
+
+- TON Documentation: https://docs.ton.org
+- TON SDKs: https://old-docs.ton.org/v3/guidelines/dapps/apis-sdks/sdk
+- TON Wallet Contracts: https://old-docs.ton.org/v3/documentation/smart-contracts/contracts-specs/wallet-contract
+- Jetton Standard (TEP-74): https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
+- TonAPI Documentation: https://docs.tonconsole.com/tonapi
