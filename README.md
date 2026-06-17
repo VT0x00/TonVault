@@ -102,7 +102,7 @@ tonvault wallet import --network mainnet
 | `--network`    | `""`       | Network: `mainnet` or `testnet`. Defaults to the wallet's configured network, or `mainnet`. |
 | `--limit`      | `10`       | Number of transactions to fetch.                |
 
-**Pagination:** Transactions are fetched in batches of up to 16 per request. If the lite server does not retain the full transaction history (common for older blocks), fewer transactions than requested may be returned — a warning is shown when this occurs.
+**Pagination:** Transactions are fetched in batches of up to 16 per request. If the lite server does not retain the full transaction history (common for older blocks), TonVault automatically falls back to the TON Center HTTP API with `archival=true` (if an API key is configured), which can retrieve the full transaction history from archive nodes.
 
 #### `history show` options
 
@@ -160,6 +160,42 @@ Config is stored at `~/.config/tonvault/config.json`.
 | `default_wallet_id`  | `""`         | Default wallet for commands  |
 | `explorer_url`       | (varies)     | Blockchain explorer URL      |
 | `log_level`          | `info`       | Logging verbosity            |
+| `toncenter_api_key`  | `""`         | TON Center API key (free at https://toncenter.com). Enables archival transaction fallback when the lite server's data retention limit is hit. |
+
+## Deep transaction history
+
+Public TON lite servers typically retain only recent transaction data (days to weeks).
+To view **full history** for an address, TonVault offers two approaches:
+
+### 1. TON Center API fallback (recommended)
+
+When the lite server cannot return enough transactions (returns fewer than requested),
+TonVault automatically falls back to the TON Center HTTP API with `archival=true`,
+which queries archive nodes with full blockchain history.
+
+**Setup:**
+
+1. Get a free API key at https://toncenter.com
+2. Configure it:
+
+```bash
+tonvault config set toncenter_api_key YOUR_API_KEY
+```
+
+That's it — subsequent `history list` and `history show` commands will automatically
+use the API fallback when needed.
+
+### 2. Archive lite server
+
+For users who prefer not to use the TON Center API, you can configure TonVault to
+connect directly to archive lite servers:
+
+```bash
+tonvault config set lite_servers '["https://archive-node-config-url"]'
+```
+
+Archive lite server configs can be obtained from TON node providers or by running
+your own archive node.
 
 ## Transaction history for external wallets
 
@@ -212,6 +248,7 @@ tonvault/
 │   │   ├── client.go    # Lite server connection
 │   │   ├── balance.go   # Balance queries
 │   │   ├── history.go   # Transaction history
+│   │   ├── toncenter.go # TON Center HTTP API fallback
 │   │   ├── jettons.go   # Jetton support
 │   │   └── transfer.go  # Send TON/Jettons
 │   └── wallet/          # Wallet creation, storage, encryption

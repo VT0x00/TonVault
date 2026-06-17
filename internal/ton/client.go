@@ -19,6 +19,13 @@ type Client struct {
 	api            ton.APIClientWrapped
 	connectionPool *liteclient.ConnectionPool
 	configURL      string
+	toncenter      *TonCenterClient
+}
+
+func (c *Client) SetTonCenterAPIKey(apiKey, network string) {
+	if apiKey != "" {
+		c.toncenter = NewTonCenterClient(apiKey, network)
+	}
 }
 
 var NetworkConfigURLs = map[string]string{

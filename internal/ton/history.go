@@ -155,7 +155,43 @@ func (c *Client) GetTransactionHistory(
 		records = append(records, record)
 	}
 
+	if uint32(len(records)) < limit && c.toncenter != nil {
+		tcRecords, err := c.toncenter.GetTransactions(ctx, addr, limit)
+		if err == nil {
+			records = mergeTxRecords(records, tcRecords, int(limit))
+		}
+	}
+
 	return records, nil
+}
+
+func mergeTxRecords(a, b []*TxRecord, limit int) []*TxRecord {
+	seen := make(map[string]bool, len(a)+len(b))
+	merged := make([]*TxRecord, 0, min(len(a)+len(b), limit))
+
+	for _, r := range a {
+		if seen[r.Hash] {
+			continue
+		}
+		seen[r.Hash] = true
+		merged = append(merged, r)
+		if len(merged) >= limit {
+			return merged
+		}
+	}
+
+	for _, r := range b {
+		if seen[r.Hash] {
+			continue
+		}
+		seen[r.Hash] = true
+		merged = append(merged, r)
+		if len(merged) >= limit {
+			return merged
+		}
+	}
+
+	return merged
 }
 
 func (c *Client) IsContractDeployed(ctx context.Context, addr *address.Address) (bool, error) {

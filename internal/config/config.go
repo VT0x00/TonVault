@@ -50,6 +50,7 @@ func NewManager() (*Manager, error) {
 	v.SetDefault("explorer_url", DefaultExplorerURL)
 	v.SetDefault("lite_servers", DefaultLiteServers[DefaultNetwork])
 	v.SetDefault("default_wallet_id", "")
+	v.SetDefault("toncenter_api_key", "")
 
 	m := &Manager{
 		viper: v,
@@ -105,6 +106,10 @@ func (m *Manager) GetLiteServers() []string {
 	return m.viper.GetStringSlice("lite_servers")
 }
 
+func (m *Manager) GetTonCenterAPIKey() string {
+	return m.viper.GetString("toncenter_api_key")
+}
+
 func (m *Manager) Set(key, value string) error {
 	m.viper.Set(key, value)
 	return m.viper.WriteConfig()
@@ -121,6 +126,7 @@ func (m *Manager) Reset() error {
 		"explorer_url":      DefaultExplorerURL,
 		"log_level":         DefaultLogLevel,
 		"lite_servers":      DefaultLiteServers[DefaultNetwork],
+		"toncenter_api_key": "",
 	}
 	for k, v := range cfg {
 		m.viper.Set(k, v)

@@ -71,6 +71,10 @@ or defaults to the configured default wallet.`,
 		}
 		defer client.Close()
 
+		if key := cfg.GetTonCenterAPIKey(); key != "" {
+			client.SetTonCenterAPIKey(key, network)
+		}
+
 		records, err := client.GetTransactionHistory(ctx, addr, historyListFlags.limit)
 		if err != nil {
 			return fmt.Errorf("failed to get transaction history: %w", err)
