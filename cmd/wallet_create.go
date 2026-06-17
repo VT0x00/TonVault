@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var walletCreateFlags struct {
+	network string
+}
+
 var walletCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new wallet",
@@ -17,7 +21,12 @@ var walletCreateCmd = &cobra.Command{
 			return fmt.Errorf("failed to open wallet store: %w", err)
 		}
 
-		w, err := wallet.CreateNewWallet(store, cfg.GetNetwork())
+		network := walletCreateFlags.network
+		if network == "" {
+			network = cfg.GetNetwork()
+		}
+
+		w, err := wallet.CreateNewWallet(store, network)
 		if err != nil {
 			return fmt.Errorf("failed to create wallet: %w", err)
 		}
@@ -27,6 +36,7 @@ var walletCreateCmd = &cobra.Command{
 		fmt.Printf("  Name:    %s\n", w.Name)
 		fmt.Printf("  Address: %s\n", w.Address)
 		fmt.Printf("  Version: %s\n", w.Version)
+		fmt.Printf("  Network: %s\n", w.Network)
 
 		if store.Count() == 1 {
 			store.SetDefault(w.ID)
@@ -38,5 +48,6 @@ var walletCreateCmd = &cobra.Command{
 }
 
 func init() {
+	walletCreateCmd.Flags().StringVar(&walletCreateFlags.network, "network", "", "network (mainnet/testnet, defaults to global config)")
 	walletCmd.AddCommand(walletCreateCmd)
 }

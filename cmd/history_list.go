@@ -15,37 +15,57 @@ import (
 )
 
 var historyListFlags struct {
-	limit uint32
+	limit   uint32
+	address string
+	network string
 }
 
 var historyListCmd = &cobra.Command{
 	Use:   "list [wallet_id]",
 	Short: "List recent transactions",
-	Long:  `Display recent transaction history for the default wallet.`,
-	Args:  cobra.MaximumNArgs(1),
+	Long: `Display recent transaction history.
+
+Accepts a wallet ID (from local store), a raw TON address via --address,
+or defaults to the configured default wallet.`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := wallet.NewStore()
-		if err != nil {
-			return fmt.Errorf("failed to open wallet store: %w", err)
-		}
+		var addr *address.Address
+		network := historyListFlags.network
 
-		var w *models.Wallet
-		if len(args) > 0 {
-			w, err = store.Get(args[0])
+		if historyListFlags.address != "" {
+			var err error
+			addr, err = address.ParseAddr(historyListFlags.address)
+			if err != nil {
+				return fmt.Errorf("invalid address: %w", err)
+			}
+			if network == "" {
+				network = "mainnet"
+			}
 		} else {
-			w = store.GetDefault()
-		}
-		if err != nil || w == nil {
-			return fmt.Errorf("wallet not found")
-		}
+			store, err := wallet.NewStore()
+			if err != nil {
+				return fmt.Errorf("failed to open wallet store: %w", err)
+			}
 
-		addr, err := address.ParseAddr(w.Address)
-		if err != nil {
-			return fmt.Errorf("invalid wallet address: %w", err)
+			var w *models.Wallet
+			if len(args) > 0 {
+				w, err = store.Get(args[0])
+			} else {
+				w = store.GetDefault()
+			}
+			if err != nil || w == nil {
+				return fmt.Errorf("wallet not found")
+			}
+
+			addr, err = address.ParseAddr(w.Address)
+			if err != nil {
+				return fmt.Errorf("invalid wallet address: %w", err)
+			}
+			network = w.Network
 		}
 
 		ctx := cmd.Context()
-		client, err := ton.NewClientForNetwork(ctx, w.Network)
+		client, err := ton.NewClientForNetwork(ctx, network)
 		if err != nil {
 			return fmt.Errorf("failed to connect to TON network: %w", err)
 		}
@@ -61,6 +81,11 @@ var historyListCmd = &cobra.Command{
 			return nil
 		}
 
+		if uint32(len(records)) < historyListFlags.limit {
+			fmt.Fprintf(os.Stderr, "Warning: fetched %d of %d requested transactions (lite server data retention limit)\n",
+				len(records), historyListFlags.limit)
+		}
+
 		table := tablewriter.NewTable(os.Stdout,
 			tablewriter.WithRendition(tw.Rendition{
 				Settings: tw.Settings{
@@ -71,7 +96,7 @@ var historyListCmd = &cobra.Command{
 			}),
 		)
 
-		table.Header("Date", "Type", "Amount (TON)", "From / To", "Comment")
+		table.Header("Date", "Type", "Amount (TON)", "From / To", "Fee", "Comment")
 
 		for _, r := range records {
 			ts := r.Timestamp.Format(time.RFC3339)
@@ -88,12 +113,14 @@ var historyListCmd = &cobra.Command{
 				addrStr = addrStr[:8] + "..." + addrStr[len(addrStr)-8:]
 			}
 
+			fee := ton.FormatNanoTON(r.Fee)
+
 			comment := r.Comment
 			if len(comment) > 30 {
 				comment = comment[:27] + "..."
 			}
 
-			if err := table.Append(ts, r.Type, amount, addrStr, comment); err != nil {
+			if err := table.Append(ts, r.Type, amount, addrStr, fee, comment); err != nil {
 				return err
 			}
 		}
@@ -104,5 +131,7 @@ var historyListCmd = &cobra.Command{
 
 func init() {
 	historyListCmd.Flags().Uint32Var(&historyListFlags.limit, "limit", 10, "number of transactions to show")
+	historyListCmd.Flags().StringVar(&historyListFlags.address, "address", "", "TON address to query (bypasses wallet store)")
+	historyListCmd.Flags().StringVar(&historyListFlags.network, "network", "", "network (mainnet/testnet, defaults to wallet network or mainnet)")
 	historyCmd.AddCommand(historyListCmd)
 }

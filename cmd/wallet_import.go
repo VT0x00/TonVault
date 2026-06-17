@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var walletImportFlags struct {
+	network string
+}
+
 var walletImportCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import wallet from seed phrase",
@@ -17,7 +21,12 @@ var walletImportCmd = &cobra.Command{
 			return fmt.Errorf("failed to open wallet store: %w", err)
 		}
 
-		w, err := wallet.ImportWalletFromSeed(store, cfg.GetNetwork())
+		network := walletImportFlags.network
+		if network == "" {
+			network = cfg.GetNetwork()
+		}
+
+		w, err := wallet.ImportWalletFromSeed(store, network)
 		if err != nil {
 			return fmt.Errorf("failed to import wallet: %w", err)
 		}
@@ -27,6 +36,7 @@ var walletImportCmd = &cobra.Command{
 		fmt.Printf("  Name:    %s\n", w.Name)
 		fmt.Printf("  Address: %s\n", w.Address)
 		fmt.Printf("  Version: %s\n", w.Version)
+		fmt.Printf("  Network: %s\n", w.Network)
 
 		if store.Count() == 1 {
 			store.SetDefault(w.ID)
@@ -38,5 +48,6 @@ var walletImportCmd = &cobra.Command{
 }
 
 func init() {
+	walletImportCmd.Flags().StringVar(&walletImportFlags.network, "network", "", "network (mainnet/testnet, defaults to global config)")
 	walletCmd.AddCommand(walletImportCmd)
 }

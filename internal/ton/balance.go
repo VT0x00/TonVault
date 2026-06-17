@@ -57,3 +57,12 @@ func FormatBalanceShort(nano *big.Int) string {
 func NanoToTON(nano *big.Int) tlb.Coins {
 	return tlb.FromNanoTON(nano)
 }
+
+func FormatNanoTON(nano string) string {
+	n := new(big.Int)
+	n, ok := n.SetString(nano, 10)
+	if !ok {
+		return nano
+	}
+	return FormatBalanceShort(n) + " TON"
+}

@@ -3,10 +3,13 @@ package ton
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
+	"github.com/xssnick/tonutils-go/ton"
 )
 
 type TxRecord struct {
@@ -29,13 +32,85 @@ func (c *Client) GetTransactionHistory(
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	txs, err := c.api.ListTransactions(ctx, addr, limit, 0, nil)
+	block, err := c.api.CurrentMasterchainInfo(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list transactions: %w", err)
+		return nil, fmt.Errorf("failed to get masterchain info: %w", err)
 	}
 
-	var records []*TxRecord
-	for _, tx := range txs {
+	account, err := c.api.WaitForBlock(block.SeqNo).GetAccount(ctx, block, addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account: %w", err)
+	}
+
+	if !account.IsActive || account.LastTxLT == 0 {
+		return nil, nil
+	}
+
+	batchSize := limit
+	if batchSize > 16 {
+		batchSize = 16
+	}
+
+	var allTx []*tlb.Transaction
+	nextLT := account.LastTxLT
+	nextHash := account.LastTxHash
+
+	var lastBatch []*tlb.Transaction
+	slideFrom := 0
+
+	for uint32(len(allTx)) < limit && nextLT != 0 {
+		txs, err := c.api.ListTransactions(ctx, addr, batchSize, nextLT, nextHash)
+		if err != nil {
+			if errors.Is(err, ton.ErrNoTransactionsWereFound) {
+				break
+			}
+			var lsErr ton.LSError
+			if errors.As(err, &lsErr) && lsErr.Code == -400 {
+				if len(lastBatch) == 0 || slideFrom >= len(lastBatch)-1 {
+					break
+				}
+				// Slide forward through the last successful batch: try the PrevTxLT of
+				// progressively newer transactions (slideFrom+1, slideFrom+2, ..., len-1).
+				// Each step gives a more recent (less likely to be GC'd) anchor.
+				found := false
+				for i := slideFrom + 1; i < len(lastBatch); i++ {
+					if lastBatch[i].PrevTxLT == 0 {
+						continue
+					}
+					nextLT = lastBatch[i].PrevTxLT
+					nextHash = lastBatch[i].PrevTxHash
+					slideFrom = i
+					found = true
+					break
+				}
+				if !found {
+					break
+				}
+				continue
+			}
+			return nil, fmt.Errorf("failed to list transactions: %w", err)
+		}
+
+		lastBatch = txs
+		slideFrom = 0
+
+		for i := len(txs) - 1; i >= 0; i-- {
+			allTx = append(allTx, txs[i])
+			if uint32(len(allTx)) >= limit {
+				break
+			}
+		}
+
+		if uint32(len(allTx)) >= limit {
+			break
+		}
+
+		nextLT = txs[0].PrevTxLT
+		nextHash = txs[0].PrevTxHash
+	}
+
+	records := make([]*TxRecord, 0, len(allTx))
+	for _, tx := range allTx {
 		record := &TxRecord{
 			Hash:      hex.EncodeToString(tx.Hash),
 			Timestamp: time.Unix(int64(tx.Now), 0),
@@ -43,12 +118,12 @@ func (c *Client) GetTransactionHistory(
 
 		record.Fee = tx.TotalFees.Coins.Nano().String()
 
-		if tx.IO.In != nil {
+		if tx.IO.In != nil && tx.IO.In.MsgType == tlb.MsgTypeInternal {
 			if internal := tx.IO.In.AsInternal(); internal != nil {
 				record.Type = "incoming"
 				record.Amount = internal.Amount.String()
 				if internal.SrcAddr != nil {
-					record.From = internal.SrcAddr.String()
+					record.From = internal.SrcAddr.Bounce(false).String()
 				}
 				if c := internal.Comment(); c != "" {
 					record.Comment = c
@@ -60,11 +135,14 @@ func (c *Client) GetTransactionHistory(
 			msgs, err := tx.IO.Out.ToSlice()
 			if err == nil {
 				for _, outMsg := range msgs {
+					if outMsg.MsgType != tlb.MsgTypeInternal {
+						continue
+					}
 					if internal := outMsg.AsInternal(); internal != nil {
 						record.Type = "outgoing"
 						record.Amount = internal.Amount.String()
 						if internal.DstAddr != nil {
-							record.To = internal.DstAddr.String()
+							record.To = internal.DstAddr.Bounce(false).String()
 						}
 						if c := internal.Comment(); c != "" {
 							record.Comment = c

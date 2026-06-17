@@ -3,11 +3,17 @@ package ton
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"time"
 
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 )
+
+func init() {
+	log.SetOutput(io.Discard)
+}
 
 type Client struct {
 	api            ton.APIClientWrapped

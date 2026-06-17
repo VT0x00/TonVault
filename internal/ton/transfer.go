@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
@@ -29,18 +30,12 @@ func (c *Client) SendTON(
 
 	coins := tlb.FromNanoTON(amountNano)
 
-	var err error
-	if comment != "" {
-		err = w.Transfer(ctx, toAddr, coins, comment)
-	} else {
-		err = w.Transfer(ctx, toAddr, coins, "")
-	}
-
+	tx, _, err := w.TransferWaitTransaction(ctx, toAddr, coins, comment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send TON: %w", err)
 	}
 
-	return &TransferResult{}, nil
+	return &TransferResult{TxHash: hex.EncodeToString(tx.Hash)}, nil
 }
 
 func (c *Client) SendJetton(
@@ -83,10 +78,10 @@ func (c *Client) SendJetton(
 	}
 
 	msg := wallet.SimpleMessage(tokenWallet.Address(), tlb.MustFromTON("0.05"), transferPayload)
-	_, _, err = w.SendWaitTransaction(ctx, msg)
+	tx, _, err := w.SendWaitTransaction(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send Jetton: %w", err)
 	}
 
-	return &TransferResult{}, nil
+	return &TransferResult{TxHash: hex.EncodeToString(tx.Hash)}, nil
 }

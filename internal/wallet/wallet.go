@@ -39,7 +39,7 @@ func CreateFromMnemonic(words []string, network string) (*models.Wallet, []byte,
 	addr := w.Address()
 	pubKey := w.PrivateKey().Public().(ed25519.PublicKey)
 
-	id := fmt.Sprintf("%x", pubKey)[:16]
+	id := fmt.Sprintf("%s-%s", hex.EncodeToString(pubKey)[:16], network)
 
 	walletModel := &models.Wallet{
 		ID:          id,
