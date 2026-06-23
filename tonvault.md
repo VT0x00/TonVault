@@ -55,6 +55,9 @@
 | **Gas Estimation** | Estimate and display gas fees (paid in TON) before confirming |
 | **Transaction Confirmation** | Display transaction hash and link to blockchain explorer |
 
+### 2.3.1 & 2.4.1 Swap
+| **TON and Jettons swap** | Swap jettons&TON, display fees, etc... |
+
 ### 2.5 Transaction History
 
 | Feature | Description |
